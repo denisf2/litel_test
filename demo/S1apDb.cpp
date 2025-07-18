@@ -35,7 +35,7 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 	if(aEvent.imsi.has_value()) // has imsi
 	{
 		// imsi -> new / update subscriber
-		auto subscriber = m_subscribers[aEvent.imsi.value()];
+		auto& subscriber = m_subscribers[aEvent.imsi.value()];
 
 		subscriber.lastActiveTimestamp = aEvent.timestamp;
 		subscriber.enodeb_id = aEvent.enodeb_id.value();
@@ -56,7 +56,7 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 		// m_tmsi -> imsi -> new / update subscriber
 		if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 		{
-			auto subscriber = m_subscribers[imsiIter->second];
+			auto& subscriber = m_subscribers[imsiIter->second];
 
 			subscriber.lastActiveTimestamp = aEvent.timestamp;
 			subscriber.enodeb_id = aEvent.enodeb_id.value();
