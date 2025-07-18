@@ -3,7 +3,7 @@
 #
 
 # Add source to this project's executable.
-add_executable (demo "demo.cpp" "demo.h")
+add_executable (demo "demo.cpp" "demo.h" "S1apDb.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET demo PROPERTY CXX_STANDARD 20)
