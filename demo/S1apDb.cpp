@@ -43,6 +43,7 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 
 		// TODO: update all indexes
 
+		// TODO: return only new registration
 		return {{
 				.s1ap_type = S1apOut::S1apOutType::Reg,
 				.imsi = aEvent.imsi.value(),
@@ -64,6 +65,7 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 
 			// TODO: update all indexes
 
+			// TODO: return only new registration
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Reg,
 					.imsi = imsiIter->second,
