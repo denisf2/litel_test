@@ -59,8 +59,10 @@ class S1apDb
 
 private:
 	using imsi = uint64_t;
+	using m_tmsi = uint32_t;
 
 	std::unordered_map<imsi, Subscriber> m_subscribers;
+	std::unordered_map<m_tmsi, imsi> m_m_tmsi2imsi;
 	// TODO: make search Subscriber(enodeb_id)
 	// TODO: make search Subscriber(mme_id)
 	// TODO: make search Subscriber(m_tmsi)

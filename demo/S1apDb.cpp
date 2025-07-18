@@ -34,6 +34,7 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 {
 	if(aEvent.imsi.has_value()) // has imsi
 	{
+		// imsi -> new / update subscriber
 		auto subscriber = m_subscribers[aEvent.imsi.value()];
 
 		subscriber.lastActiveTimestamp = aEvent.timestamp;
@@ -42,15 +43,33 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 
 		// TODO: update all indexes
 
-		return std::optional<S1apOut>{{
-									.s1ap_type = S1apOut::S1apOutType::Reg,
-									.imsi = aEvent.imsi.value(),
-									.cgi = aEvent.cgi.value()
+		return {{
+				.s1ap_type = S1apOut::S1apOutType::Reg,
+				.imsi = aEvent.imsi.value(),
+				.cgi = aEvent.cgi.value()
 			}};
 	}
 	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
 	{
 		// find old imsi and update
+		// m_tmsi -> imsi -> new / update subscriber
+		if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
+		{
+			auto subscriber = m_subscribers[imsiIter->second];
+
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
+			subscriber.enodeb_id = aEvent.enodeb_id.value();
+			subscriber.m_tmsi = aEvent.m_tmsi.value();
+			subscriber.cgi = aEvent.cgi.value();
+
+			// TODO: update all indexes
+
+			return {{
+					.s1ap_type = S1apOut::S1apOutType::Reg,
+					.imsi = imsiIter->second,
+					.cgi = aEvent.cgi.value()
+				}};
+		}
 	}
 
 	return std::nullopt;
