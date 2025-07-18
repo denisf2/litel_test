@@ -7,7 +7,9 @@ using namespace std;
 
 int main()
 {
-	demo::S1apDb foo();
+	demo::S1apDb foo;
+	demo::Event event;
+	const auto res = foo.handler(event);
 
 	cout << "Hello CMake." << endl;
 	return 0;

@@ -1,39 +1,59 @@
-#include "demo.h"
 #include "S1apDb.h"
 
 namespace demo
 {
 
-auto handleAttachRequest() -> void;
-
 auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 {
-	switch(aEventType.event_type)
+	using ET = Event::EventType;
+
+	switch(aEvent.event_type)
 	{
-		case EventType::AttachRequest:
-			return handleAttachRequest();
-		case EventType::IdentityResponse:
+		case ET::AttachRequest:
+			return handleAttachRequest(aEvent);
+		case ET::IdentityResponse:
 			// TODO: return handleIdentityResponse();
-		case EventType::AttachAccept:
+		case ET::AttachAccept:
 			// TODO: return handleAttachAccept();
-		case EventType::Paging:
+		case ET::Paging:
 			// TODO: return handlePaging();
-		case EventType::PathSwitchRequest:
+		case ET::PathSwitchRequest:
 			// TODO: return handlePathSwitchRequest();
-		case EventType::PathSwitchRequestAcknowledge:
+		case ET::PathSwitchRequestAcknowledge:
 			// TODO: return handlePathSwitchRequestAcknowledge();
-		case EventType::UEContextReleaseCommand:
+		case ET::UEContextReleaseCommand:
 			// TODO: return handleUEContextReleaseCommand();
-		case EventType::UEContextReleaseResponse:
+		case ET::UEContextReleaseResponse:
 			// TODO: return handleUEContextReleaseResponse();
 		default:
 			return std::nullopt;
 	}
 }
 
-auto handleAttachRequest() -> void
+auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 {
-	// TODO: create new subscriber
+	if(aEvent.imsi.has_value()) // has imsi
+	{
+		auto subscriber = m_subscribers[aEvent.imsi.value()];
+
+		subscriber.lastActiveTimestamp = aEvent.timestamp;
+		subscriber.enodeb_id = aEvent.enodeb_id.value();
+		subscriber.cgi = aEvent.cgi.value();
+
+		// TODO: update all indexes
+
+		return std::optional<S1apOut>{{
+									.s1ap_type = S1apOut::S1apOutType::Reg,
+									.imsi = aEvent.imsi.value(),
+									.cgi = aEvent.cgi.value()
+			}};
+	}
+	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
+	{
+		// find old imsi and update
+	}
+
+	return std::nullopt;
 }
 
 } // namespace demo
