@@ -35,6 +35,8 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 	if(aEvent.imsi.has_value()) // has imsi
 	{
 		// imsi -> new / update subscriber
+		// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
+		const auto newSubscriber = not m_subscribers.contains(aEvent.imsi.value());
 		auto& subscriber = m_subscribers[aEvent.imsi.value()];
 
 		subscriber.lastActiveTimestamp = aEvent.timestamp;
@@ -43,12 +45,14 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 
 		// TODO: update all indexes
 
-		// TODO: return only new registration
-		return {{
-				.s1ap_type = S1apOut::S1apOutType::Reg,
-				.imsi = aEvent.imsi.value(),
-				.cgi = aEvent.cgi.value()
-			}};
+		if(newSubscriber)
+		{
+			return {{
+					.s1ap_type = S1apOut::S1apOutType::Reg,
+					.imsi = aEvent.imsi.value(),
+					.cgi = aEvent.cgi.value()
+				}};
+		}
 	}
 	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
 	{
@@ -56,6 +60,8 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 		// m_tmsi -> imsi -> new / update subscriber
 		if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 		{
+			// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
+			const auto newSubscriber = not m_subscribers.contains(imsiIter->second);
 			auto& subscriber = m_subscribers[imsiIter->second];
 
 			subscriber.lastActiveTimestamp = aEvent.timestamp;
@@ -65,12 +71,14 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 
 			// TODO: update all indexes
 
-			// TODO: return only new registration
-			return {{
-					.s1ap_type = S1apOut::S1apOutType::Reg,
-					.imsi = imsiIter->second,
-					.cgi = aEvent.cgi.value()
-				}};
+			if(newSubscriber)
+			{
+				return {{
+						.s1ap_type = S1apOut::S1apOutType::Reg,
+						.imsi = imsiIter->second,
+						.cgi = aEvent.cgi.value()
+					}};
+			}
 		}
 	}
 
