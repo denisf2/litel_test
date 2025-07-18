@@ -48,24 +48,23 @@ struct S1apOut
 
 class S1apDb
 {
-	class Abonnent
+	class Subscriber
 	{
 	private:
-		uint64_t timestamp{0ul};   // since EPOCH in ms
+		uint64_t lastActiveTimestamp{0ul};   // last action since EPOCH in ms
+		uint32_t enodeb_id;                  // eNodeB ID
+		uint32_t mme_id;                     // MME ID
+		uint32_t m_tmsi;                     // temporary ID
+		std::vector<uint8_t> cgi;            // CDI - Payload ?
 
-		std::optional<uint32_t> enodeb_id; // optional
-		std::optional<uint32_t> mme_id; // optional
-		std::optional<uint64_t> imsi; // optional
-		std::optional<uint32_t> m_tmsi; //optional
-		std::optional<std::vector<uint8_t>> cgi; // optional
 	public:
 	};
 
 private:
-	std::unordered_map<uint64_t, Abonnent> m_abonnents;
+	std::unordered_map<uint64_t, Subscriber> m_subscribers;
 
 public:
-	auto handler(Event aEvent) -> std::optional<S1apOut>;
+	auto handler(const Event& aEvent) -> std::optional<S1apOut>;
 };
 
 } // namespace demo
