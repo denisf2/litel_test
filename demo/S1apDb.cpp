@@ -13,19 +13,19 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case EventType::AttachRequest:
 			return handleAttachRequest();
 		case EventType::IdentityResponse:
-			//return handleIdentityResponse();
+			// TODO: return handleIdentityResponse();
 		case EventType::AttachAccept:
-			//return handleAttachAccept();
+			// TODO: return handleAttachAccept();
 		case EventType::Paging:
-			//return handlePaging();
+			// TODO: return handlePaging();
 		case EventType::PathSwitchRequest:
-			//return handlePathSwitchRequest();
+			// TODO: return handlePathSwitchRequest();
 		case EventType::PathSwitchRequestAcknowledge:
-			//return handlePathSwitchRequestAcknowledge();
+			// TODO: return handlePathSwitchRequestAcknowledge();
 		case EventType::UEContextReleaseCommand:
-			//return handleUEContextReleaseCommand();
+			// TODO: return handleUEContextReleaseCommand();
 		case EventType::UEContextReleaseResponse:
-			//return handleUEContextReleaseResponse();
+			// TODO: return handleUEContextReleaseResponse();
 		default:
 			return std::nullopt;
 	}
@@ -33,7 +33,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 
 auto handleAttachRequest() -> void
 {
-
+	// TODO: create new subscriber
 }
 
 } // namespace demo

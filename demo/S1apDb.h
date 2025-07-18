@@ -62,6 +62,10 @@ class S1apDb
 
 private:
 	std::unordered_map<uint64_t, Subscriber> m_subscribers;
+	// TODO: make search Subscriber(enodeb_id)
+	// TODO: make search Subscriber(mme_id)
+	// TODO: make search Subscriber(m_tmsi)
+	// TODO: check timeout somehow and make cleanup
 
 public:
 	auto handler(const Event& aEvent) -> std::optional<S1apOut>;
