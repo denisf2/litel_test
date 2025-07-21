@@ -35,21 +35,23 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 	if(aEvent.imsi.has_value()) // has imsi
 	{
 		// imsi -> new / update subscriber
+		const auto imsi = aEvent.imsi.value();
 		// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
-		const auto newSubscriber = not m_subscribers.contains(aEvent.imsi.value());
-		auto& subscriber = m_subscribers[aEvent.imsi.value()];
+		const auto newSubscriber = not m_subscribers.contains(imsi);
+		auto& subscriber = m_subscribers[imsi];
 
 		subscriber.lastActiveTimestamp = aEvent.timestamp;
 		subscriber.enodeb_id = aEvent.enodeb_id.value();
 		subscriber.cgi = aEvent.cgi.value();
 
 		// TODO: update all indexes
+		m_enodeb_id2imsi[imsi] = imsi;
 
 		if(newSubscriber)
 		{
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Reg,
-					.imsi = aEvent.imsi.value(),
+					.imsi = imsi,
 					.cgi = aEvent.cgi.value()
 				}};
 		}
@@ -60,9 +62,10 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 		// m_tmsi -> imsi -> new / update subscriber
 		if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 		{
+			const auto& imsi = imsiIter->second;
 			// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
-			const auto newSubscriber = not m_subscribers.contains(imsiIter->second);
-			auto& subscriber = m_subscribers[imsiIter->second];
+			const auto newSubscriber = not m_subscribers.contains(imsi);
+			auto& subscriber = m_subscribers[imsi];
 
 			subscriber.lastActiveTimestamp = aEvent.timestamp;
 			subscriber.enodeb_id = aEvent.enodeb_id.value();
@@ -70,12 +73,13 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 			subscriber.cgi = aEvent.cgi.value();
 
 			// TODO: update all indexes
+			m_m_tmsi2imsi[imsi] = imsi;
 
 			if(newSubscriber)
 			{
 				return {{
 						.s1ap_type = S1apOut::S1apOutType::Reg,
-						.imsi = imsiIter->second,
+						.imsi = imsi,
 						.cgi = aEvent.cgi.value()
 					}};
 			}
