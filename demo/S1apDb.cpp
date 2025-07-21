@@ -5,6 +5,8 @@ namespace demo
 
 auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 {
+	cleanupOldRecords(aEvent.timestamp);
+
 	using ET = Event::EventType;
 
 	switch(aEvent.event_type)
@@ -27,6 +29,35 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 			// TODO: return handleUEContextReleaseResponse();
 		default:
 			return std::nullopt;
+	}
+}
+
+auto S1apDb::cleanupOldRecords(uint64_t aCurrentTime) -> void
+{
+	constexpr uint64_t session_timeout_24_hours_ms{24ull * 60 * 60 * 1000};
+
+	// check the oldest subscriber is still valid
+	// if no remove it and find new the oldest
+	if(aCurrentTime - m_theOldestSubscriber.timestamp > session_timeout_24_hours_ms)
+	{
+		m_subscribers.erase(m_theOldestSubscriber.imsi);
+		// TODO: remove subscriber in other containers
+
+		findTheOldestSubscriber();
+	}
+}
+
+auto S1apDb::findTheOldestSubscriber() -> void
+{
+	m_theOldestSubscriber.reset();
+
+	for(const auto& [imsi, subscriber] : m_subscribers)
+	{
+		if(subscriber.lastActiveTimestamp < m_theOldestSubscriber.timestamp)
+		{
+			m_theOldestSubscriber.timestamp = subscriber.lastActiveTimestamp;
+			m_theOldestSubscriber.imsi = imsi;
+		}
 	}
 }
 

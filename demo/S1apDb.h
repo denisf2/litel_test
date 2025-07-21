@@ -68,7 +68,23 @@ private:
 	// TODO: make search Subscriber(m_tmsi)
 	// TODO: check timeout somehow and make cleanup
 
+	struct _Elder
+	{
+		uint64_t timestamp{std::numeric_limits<uint64_t>::max()};
+		uint64_t imsi{std::numeric_limits<uint64_t>::min()};
+
+		auto reset() -> void
+		{
+			timestamp = std::numeric_limits<uint64_t>::max();
+			imsi = std::numeric_limits<uint64_t>::min();
+		}
+	};
+
+	_Elder m_theOldestSubscriber;
+
 private:
+	auto cleanupOldRecords(uint64_t current_time) -> void;
+	auto findTheOldestSubscriber() -> void;
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
 
 public:
