@@ -100,6 +100,7 @@ private:
 	auto cleanupOldRecords(uint64_t current_time) -> void;
 	auto findTheOldestSubscriber() -> void;
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
+	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
 
 public:
 	auto handler(const Event& aEvent) -> std::optional<S1apOut>;

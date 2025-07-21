@@ -18,7 +18,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::AttachAccept:
 			// TODO: return handleAttachAccept();
 		case ET::Paging:
-			// TODO: return handlePaging();
+			return handlePaging(aEvent);
 		case ET::PathSwitchRequest:
 			// TODO: return handlePathSwitchRequest();
 		case ET::PathSwitchRequestAcknowledge:
@@ -114,6 +114,32 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 						.cgi = aEvent.cgi.value()
 					}};
 			}
+		}
+	}
+
+	return std::nullopt;
+}
+
+
+auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
+{
+	// Paging{m_tmsi, cgi}
+
+	// m_tmsi -> imsi
+	if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber->second.cgi = aEvent.cgi.value();
+
+			// TODO: return struct on change cgi or always?
+			return {{
+						.s1ap_type = S1apOut::S1apOutType::Cgi,
+						.imsi = imsi,
+						.cgi = aEvent.cgi.value(),
+					}};
 		}
 	}
 
