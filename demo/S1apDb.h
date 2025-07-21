@@ -6,6 +6,7 @@
 
 namespace demo
 {
+// protocol input struct
 struct Event
 {
 	enum class EventType
@@ -31,6 +32,7 @@ struct Event
 	std::optional<std::vector<uint8_t>> cgi;
 };
 
+// protocol handler outputs struct
 struct S1apOut
 {
 	enum S1apOutType
@@ -48,24 +50,36 @@ struct S1apOut
 
 class S1apDb
 {
+	// subscriber status struct
 	struct Subscriber
 	{
-		uint64_t lastActiveTimestamp{0ul};   // last action since EPOCH in ms
+		uint64_t lastActiveTimestamp{0ull};  // last action since EPOCH in ms
 		uint32_t enodeb_id{0};               // eNodeB ID
 		uint32_t mme_id{0};                  // MME ID
 		uint32_t m_tmsi{0};                  // temporary ID
 		std::vector<uint8_t> cgi;            // CDI - Payload ?
+
+		// timeout (1 sec) condition flags
+		bool m_waitingForIdentityResponse{false};
+		bool m_waitingForAttachAccept{false};
+		bool m_waitingForRequestAcknowledge{false};
+		bool m_waitingForReleaseResponse{false};
 	};
 
 private:
 	using imsi = uint64_t;
+	using timestamp = uint64_t;
 	using m_tmsi = uint32_t;
+	using enodeb_id = uint32_t;
+	using mme_id = uint32_t;
 
 	std::unordered_map<imsi, Subscriber> m_subscribers;
 	std::unordered_map<m_tmsi, imsi> m_m_tmsi2imsi;
+	std::unordered_map<enodeb_id, imsi> m_enodeb_id2imsi;
+	std::unordered_map<mme_id, imsi> m_mme_id2imsi;
+	// TODO: make search Subscriber(m_tmsi)
 	// TODO: make search Subscriber(enodeb_id)
 	// TODO: make search Subscriber(mme_id)
-	// TODO: make search Subscriber(m_tmsi)
 	// TODO: check timeout somehow and make cleanup
 
 	struct _Elder
