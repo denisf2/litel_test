@@ -60,10 +60,10 @@ class S1apDb
 		std::vector<uint8_t> cgi;            // CDI - Payload ?
 
 		// timeout (1 sec) condition flags
-		bool m_waitingForIdentityResponse{false};
-		bool m_waitingForAttachAccept{false};
-		bool m_waitingForRequestAcknowledge{false};
-		bool m_waitingForReleaseResponse{false};
+		bool waitingForIdentityResponse{false};
+		bool waitingForAttachAccept{false};
+		bool waitingForRequestAcknowledge{false};
+		bool waitingForReleaseResponse{false};
 	};
 
 private:
@@ -101,6 +101,7 @@ private:
 	auto findTheOldestSubscriber() -> void;
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
+	auto handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>;
 
 public:
 	auto handler(const Event& aEvent) -> std::optional<S1apOut>;

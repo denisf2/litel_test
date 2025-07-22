@@ -24,7 +24,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::PathSwitchRequestAcknowledge:
 			// TODO: return handlePathSwitchRequestAcknowledge();
 		case ET::UEContextReleaseCommand:
-			// TODO: return handleUEContextReleaseCommand();
+			return handleUEContextReleaseCommand(aEvent);
 		case ET::UEContextReleaseResponse:
 			// TODO: return handleUEContextReleaseResponse();
 		default:
@@ -146,4 +146,29 @@ auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 	return std::nullopt;
 }
 
+auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>
+{
+	// UEContextReleaseCommand {enodeb_id_4, mme_id_4, cgi_7}
+	// TODO: what should i prefer enodeb_id or mme_id?
+	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			// TODO: do i need update cgi here?
+			subscriber->second.cgi = aEvent.cgi.value();
+			subscriber->second.waitingForRequestAcknowledge = true;
+
+			// TODO: return struct on change cgi or always?
+			return {{
+					.s1ap_type = S1apOut::S1apOutType::Cgi,
+					.imsi = imsi,
+					.cgi = aEvent.cgi.value()
+				}};
+		}
+	}
+
+	return std::nullopt;
+}
 } // namespace demo
