@@ -160,7 +160,7 @@ auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 			// TODO: do i need update cgi here?
 			subscriber->second.cgi = aEvent.cgi.value();
-			subscriber->second.waitingForRequestAcknowledge = true;
+			subscriber->second.waitingForReleaseResponse = true;
 
 			// TODO: return struct on change cgi or always?
 			return {{
@@ -186,16 +186,16 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 			// check timeout
 			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
 			{
-				subscriber->second.waitingForRequestAcknowledge = false;
+				subscriber->second.waitingForReleaseResponse = false;
 				return std::nullopt;
 			}
 
 			// check request flag
-			if(!subscriber->second.waitingForRequestAcknowledge)
+			if(!subscriber->second.waitingForReleaseResponse)
 				return std::nullopt;
 
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
-			subscriber->second.waitingForRequestAcknowledge = false;
+			subscriber->second.waitingForReleaseResponse = false;
 
 			// detache ids form imsi
 			m_enodeb_id2imsi.erase(aEvent.enodeb_id.value());
