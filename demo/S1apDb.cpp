@@ -3,6 +3,8 @@
 namespace demo
 {
 
+constexpr uint64_t request_timeout_1_sec_ms{1000ull};
+
 auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 {
 	cleanupOldRecords(aEvent.timestamp);
@@ -26,7 +28,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::UEContextReleaseCommand:
 			return handleUEContextReleaseCommand(aEvent);
 		case ET::UEContextReleaseResponse:
-			// TODO: return handleUEContextReleaseResponse();
+			 return handleUEContextReleaseResponse(aEvent);
 		default:
 			return std::nullopt;
 	}
@@ -171,4 +173,43 @@ auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional
 
 	return std::nullopt;
 }
+
+auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optional<S1apOut>
+{
+	// UEContextReleaseResponse {enodeb_id_4, mme_id_4}
+	// TODO: what should i prefer enodeb_id or mme_id?
+	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			// check timeout
+			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+			{
+				subscriber->second.waitingForRequestAcknowledge = false;
+				return std::nullopt;
+			}
+
+			// check request flag
+			if(!subscriber->second.waitingForRequestAcknowledge)
+				return std::nullopt;
+
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber->second.waitingForRequestAcknowledge = false;
+
+			// detache ids form imsi
+			m_enodeb_id2imsi.erase(aEvent.enodeb_id.value());
+			m_mme_id2imsi.erase(aEvent.mme_id.value());
+
+			return {{
+					.s1ap_type = S1apOut::S1apOutType::UnReg,
+					.imsi = imsi,
+					.cgi = aEvent.cgi.value()
+				}};
+		}
+	}
+
+	return std::nullopt;
+}
+
 } // namespace demo

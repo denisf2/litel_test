@@ -102,6 +102,7 @@ private:
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>;
+	auto handleUEContextReleaseResponse(const Event& aEvent) -> std::optional<S1apOut>;
 
 public:
 	auto handler(const Event& aEvent) -> std::optional<S1apOut>;
