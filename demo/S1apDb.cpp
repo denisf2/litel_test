@@ -167,18 +167,14 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 
 	if(auto subscriber = m_subscribers.find(aEvent.imsi.value()); m_subscribers.end() != subscriber)
 	{
+		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+
 		if(!subscriber->second.waitingForIdentityResponse)
-		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 			return std::nullopt;
-		}
 
 		// check request timeout condition
 		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
-		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 			return std::nullopt;
-		}
 
 		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 		subscriber->second.cgi = aEvent.cgi.value();
