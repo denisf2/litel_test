@@ -83,7 +83,8 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 {
 	//                 new         new    new
 	// AttachRequest{enodeb_id_1, imsi_1, cgi_1}
-	// imsi -> new / update subscriber
+
+	// ismi is unique but in case double messages do not produce new subscriber
 	const auto imsi = aEvent.imsi.value();
 	// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
 	const auto newSubscriber = not m_subscribers.contains(imsi);
@@ -110,7 +111,7 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 
 auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1apOut>
 {
-	//                  new          new      new
+	//                  new        new|old    new
 	// AttachRequest {enodeb_id_3, m_tmsi_1, cgi_5}
 	// find old imsi and update
 	// m_tmsi -> imsi -> new / update subscriber
@@ -118,6 +119,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 	{
 		const auto& imsi = imsiIter->second;
 		// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
+		// TODO: unordered_map.find makes one pass
 		const auto newSubscriber = not m_subscribers.contains(imsi);
 		auto& subscriber = m_subscribers[imsi];
 
@@ -155,7 +157,7 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 			return std::nullopt;
 		}
-		
+
 		// check request timeout condition
 		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
 		{
@@ -221,9 +223,9 @@ auto S1apDb::handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>
 
 auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 {
+	//                new
 	// Paging{m_tmsi, cgi}
 
-	// m_tmsi -> imsi
 	if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
@@ -306,6 +308,7 @@ auto S1apDb::handlePathSwitchRequestAcknowledge(const Event& aEvent) -> std::opt
 
 auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>
 {
+	//                                                  new
 	// UEContextReleaseCommand {enodeb_id_4, mme_id_4, cgi_7}
 	// TODO: what should i prefer enodeb_id or mme_id?
 	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
@@ -314,7 +317,7 @@ auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional
 		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
 		{
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
-			// TODO: do i need update cgi here?
+			// TODO: ??? do i need update cgi here without timeout check?
 			subscriber->second.cgi = aEvent.cgi.value();
 			subscriber->second.waitingForReleaseResponse = true;
 
