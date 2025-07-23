@@ -141,7 +141,6 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		subscriber.waitingForAttachAccept = true;
 		subscriber.waitingForIdentityResponse = true;
 
-		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
 		m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 
 		// suscriber`s session timeout managment
