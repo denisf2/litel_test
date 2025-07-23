@@ -172,6 +172,8 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 		if(!subscriber->second.waitingForIdentityResponse)
 			return std::nullopt;
 
+		subscriber->second.waitingForIdentityResponse = false;
+
 		// check request timeout condition
 		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
 			return std::nullopt;
