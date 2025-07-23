@@ -18,7 +18,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::IdentityResponse:
 			// TODO: return handleIdentityResponse();
 		case ET::AttachAccept:
-			// TODO: return handleAttachAccept();
+			 return handleAttachAccept(aEvent);
 		case ET::Paging:
 			return handlePaging(aEvent);
 		case ET::PathSwitchRequest:
@@ -174,6 +174,48 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 	return std::nullopt;
 }
 
+auto S1apDb::handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>
+{
+	//                         new      new
+	//AttachAccept{enodeb_id, mme_id, m_tmsi}
+
+	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			// check request flag
+			if(!subscriber->second.waitingForAttachAccept)
+				return std::nullopt;
+
+			subscriber->second.waitingForAttachAccept = false;
+
+			// check timeout
+			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+				return std::nullopt;
+
+			// TODO: ??? shoud mme update subscriber last active time?
+			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+
+			// update subscriber
+			subscriber->second.mme_id = aEvent.mme_id.value();
+			subscriber->second.m_tmsi = aEvent.m_tmsi.value();
+
+			// update indexes
+			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
+			//m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
+			m_mme_id2imsi[aEvent.mme_id.value()] = imsi;
+
+			return {{
+					.s1ap_type = S1apOut::S1apOutType::Reg,
+					.imsi = imsi,
+					.cgi = subscriber->second.cgi
+				}};
+		}
+	}
+
+	return std::nullopt;
+}
 
 auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 {
