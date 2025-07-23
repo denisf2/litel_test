@@ -24,7 +24,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::PathSwitchRequest:
 			// TODO: return handlePathSwitchRequest();
 		case ET::PathSwitchRequestAcknowledge:
-			// TODO: return handlePathSwitchRequestAcknowledge();
+			return handlePathSwitchRequestAcknowledge(aEvent);
 		case ET::UEContextReleaseCommand:
 			return handleUEContextReleaseCommand(aEvent);
 		case ET::UEContextReleaseResponse:
@@ -194,6 +194,38 @@ auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 						.imsi = imsi,
 						.cgi = aEvent.cgi.value(),
 					}};
+		}
+	}
+
+	return std::nullopt;
+}
+
+auto S1apDb::handlePathSwitchRequestAcknowledge(const Event& aEvent) -> std::optional<S1apOut>
+{
+	// PathSwitchRequestAcknowledge {enodeb_id_4, mme_id_4}
+
+	if(const auto imsiIter = m_mme_id2imsi.find(aEvent.mme_id.value()); m_mme_id2imsi.end() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			// check request flag
+			if(!subscriber->second.waitingForRequestAcknowledge)
+				return std::nullopt;
+
+			subscriber->second.waitingForRequestAcknowledge = false;
+
+			// timeout check
+			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+				return std::nullopt;
+
+			// TODO: ??? shoud mme update subscriber last active time?
+			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+
+			m_enodeb_id2imsi.erase(subscriber->second.enodeb_id);
+			m_enodeb_id2imsi[aEvent.enodeb_id.value()] = subscriber->second.mme_id;
+
+			subscriber->second.enodeb_id = aEvent.enodeb_id.value();
 		}
 	}
 
