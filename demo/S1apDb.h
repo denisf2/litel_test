@@ -57,7 +57,7 @@ class S1apDb
 		uint32_t enodeb_id{0};               // eNodeB ID
 		uint32_t mme_id{0};                  // MME ID
 		uint32_t m_tmsi{0};                  // temporary ID
-		std::vector<uint8_t> cgi;            // CDI - Payload ?
+		std::vector<uint8_t> cgi;            // CGI - Payload ?
 
 		// timeout (1 sec) condition flags
 		bool waitingForIdentityResponse{false};
