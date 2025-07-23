@@ -221,7 +221,6 @@ auto S1apDb::handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>
 
 			// update indexes
 			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
-			//m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 			m_mme_id2imsi[aEvent.mme_id.value()] = imsi;
 
 			return {{
