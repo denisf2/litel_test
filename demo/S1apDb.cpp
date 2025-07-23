@@ -139,6 +139,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 
 		// TODO: update all indexes
 		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
+		m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 		m_timeStampQueue.push({aEvent.timestamp, imsi});
 
 		if(newSubscriber)
