@@ -77,10 +77,6 @@ private:
 	std::unordered_map<m_tmsi, imsi> m_m_tmsi2imsi;
 	std::unordered_map<enodeb_id, imsi> m_enodeb_id2imsi;
 	std::unordered_map<mme_id, imsi> m_mme_id2imsi;
-	// TODO: make search Subscriber(m_tmsi)
-	// TODO: make search Subscriber(enodeb_id)
-	// TODO: make search Subscriber(mme_id)
-	// TODO: check timeout somehow and make cleanup
 
 	struct _Elder
 	{
