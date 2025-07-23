@@ -353,19 +353,18 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 		const auto& imsi = imsiIter->second;
 		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
 		{
-			// check timeout
-			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
-			{
-				subscriber->second.waitingForReleaseResponse = false;
-				return std::nullopt;
-			}
-
 			// check request flag
 			if(!subscriber->second.waitingForReleaseResponse)
 				return std::nullopt;
 
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 			subscriber->second.waitingForReleaseResponse = false;
+
+			// check timeout
+			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+				return std::nullopt;
+
+			// TODO: ??? shoud mme update subscriber last active time?
+			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 
 			// detache ids form imsi
 			m_enodeb_id2imsi.erase(aEvent.enodeb_id.value());
