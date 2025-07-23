@@ -3,6 +3,7 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
+#include <queue>
 
 namespace demo
 {
@@ -78,23 +79,19 @@ private:
 	std::unordered_map<enodeb_id, imsi> m_enodeb_id2imsi;
 	std::unordered_map<mme_id, imsi> m_mme_id2imsi;
 
-	struct _Elder
+	using TimeToImsi = std::pair<timestamp, imsi>;
+	struct ComparePriority
 	{
-		uint64_t timestamp{std::numeric_limits<uint64_t>::max()};
-		uint64_t imsi{std::numeric_limits<uint64_t>::min()};
-
-		auto reset() -> void
+		auto operator()(const TimeToImsi& aA, const TimeToImsi& aB) const -> bool
 		{
-			timestamp = std::numeric_limits<uint64_t>::max();
-			imsi = std::numeric_limits<uint64_t>::min();
+			// Note: reverse order for min-heap
+			return aA.first > aB.first;
 		}
 	};
-
-	_Elder m_theOldestSubscriber;
+	std::priority_queue<TimeToImsi, std::vector<TimeToImsi>, ComparePriority> m_timeStampQueue;
 
 private:
 	auto cleanupOldRecords(uint64_t current_time) -> void;
-	auto findTheOldestSubscriber() -> void;
 
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>;

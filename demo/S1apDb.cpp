@@ -38,29 +38,32 @@ auto S1apDb::cleanupOldRecords(uint64_t aCurrentTime) -> void
 {
 	constexpr uint64_t session_timeout_24_hours_ms{24ull * 60 * 60 * 1000};
 
-	// check the oldest subscriber is still valid
-	// if no remove it and find new the oldest
-	if(aCurrentTime - m_theOldestSubscriber.timestamp > session_timeout_24_hours_ms)
+	if(m_timeStampQueue.empty())
+		return;
+
+	// taking the oldest imsi
+	const auto imsi = m_timeStampQueue.top().second;
+	m_timeStampQueue.pop();
+
+	// check if it is still here
+	const auto it = m_subscribers.find(imsi);
+	if(m_subscribers.end() == it)
+		return;
+
+	// check how old subscriber`s session is
+	if(aCurrentTime - it->second.lastActiveTimestamp <= session_timeout_24_hours_ms)
 	{
-		m_subscribers.erase(m_theOldestSubscriber.imsi);
-		// TODO: remove subscriber in other containers
-
-		findTheOldestSubscriber();
+		// is Ok then update time and push it in the queue again
+		m_timeStampQueue.push({it->second.lastActiveTimestamp, it->first});
+		return;
 	}
-}
 
-auto S1apDb::findTheOldestSubscriber() -> void
-{
-	m_theOldestSubscriber.reset();
+	// time to pass a way
+	m_m_tmsi2imsi.erase(it->second.m_tmsi);
+	m_enodeb_id2imsi.erase(it->second.enodeb_id);
+	m_mme_id2imsi.erase(it->second.mme_id);
 
-	for(const auto& [imsi, subscriber] : m_subscribers)
-	{
-		if(subscriber.lastActiveTimestamp < m_theOldestSubscriber.timestamp)
-		{
-			m_theOldestSubscriber.timestamp = subscriber.lastActiveTimestamp;
-			m_theOldestSubscriber.imsi = imsi;
-		}
-	}
+	m_subscribers.erase(it->first);
 }
 
 auto S1apDb::handleAttachRequest(const Event& aEvent)->std::optional<S1apOut>
@@ -98,6 +101,7 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 
 	// TODO: update all indexes
 	m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
+	m_timeStampQueue.push({aEvent.timestamp, imsi});
 
 	if(newSubscriber)
 	{
@@ -135,6 +139,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 
 		// TODO: update all indexes
 		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
+		m_timeStampQueue.push({aEvent.timestamp, imsi});
 
 		if(newSubscriber)
 		{
