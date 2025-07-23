@@ -178,7 +178,6 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
 			return std::nullopt;
 
-		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 		subscriber->second.cgi = aEvent.cgi.value();
 
 		// TODO: return struct on change cgi or always?
