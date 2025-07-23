@@ -63,22 +63,71 @@ auto S1apDb::findTheOldestSubscriber() -> void
 	}
 }
 
-auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
+auto S1apDb::handleAttachRequest(const Event& aEvent)->std::optional<S1apOut>
 {
+	// AttachRequest{enodeb_id_1, imsi_1, cgi_1}
+	// less 24 hours
+	// AttachRequest {enodeb_id_3, m_tmsi_1, cgi_5}
+	// more 24 hours
+	// AttachRequest {enodeb_id_5, imsi_1, cgi_8}
+
 	if(aEvent.imsi.has_value()) // has imsi
+		return handleAttachRequest_imsi(aEvent);
+	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
+		return handleAttachRequest_m_tmsi(aEvent);
+
+	return std::nullopt;
+}
+
+auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>
+{
+	//                 new         new    new
+	// AttachRequest{enodeb_id_1, imsi_1, cgi_1}
+	// imsi -> new / update subscriber
+	const auto imsi = aEvent.imsi.value();
+	// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
+	const auto newSubscriber = not m_subscribers.contains(imsi);
+	auto& subscriber = m_subscribers[imsi];
+
+	subscriber.lastActiveTimestamp = aEvent.timestamp;
+	subscriber.enodeb_id = aEvent.enodeb_id.value();
+	subscriber.cgi = aEvent.cgi.value();
+
+	// TODO: update all indexes
+	m_enodeb_id2imsi[imsi] = imsi;
+
+	if(newSubscriber)
 	{
-		// imsi -> new / update subscriber
-		const auto imsi = aEvent.imsi.value();
+		return {{
+				.s1ap_type = S1apOut::S1apOutType::Reg,
+				.imsi = imsi,
+				.cgi = aEvent.cgi.value()
+			}};
+	}
+
+	return std::nullopt;
+}
+
+auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1apOut>
+{
+	//                  new          new      new
+	// AttachRequest {enodeb_id_3, m_tmsi_1, cgi_5}
+	// find old imsi and update
+	// m_tmsi -> imsi -> new / update subscriber
+	if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
 		// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
 		const auto newSubscriber = not m_subscribers.contains(imsi);
 		auto& subscriber = m_subscribers[imsi];
 
 		subscriber.lastActiveTimestamp = aEvent.timestamp;
 		subscriber.enodeb_id = aEvent.enodeb_id.value();
+		subscriber.m_tmsi = aEvent.m_tmsi.value();
 		subscriber.cgi = aEvent.cgi.value();
 
 		// TODO: update all indexes
-		m_enodeb_id2imsi[imsi] = imsi;
+		m_m_tmsi2imsi[imsi] = imsi;
 
 		if(newSubscriber)
 		{
@@ -89,7 +138,10 @@ auto S1apDb::handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>
 				}};
 		}
 	}
-	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
+
+	return std::nullopt;
+}
+
 	{
 		// find old imsi and update
 		// m_tmsi -> imsi -> new / update subscriber

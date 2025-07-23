@@ -99,7 +99,11 @@ private:
 private:
 	auto cleanupOldRecords(uint64_t current_time) -> void;
 	auto findTheOldestSubscriber() -> void;
+
 	auto handleAttachRequest(const Event& aEvent) -> std::optional<S1apOut>;
+	auto handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>;
+	auto handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1apOut>;
+
 	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleUEContextReleaseResponse(const Event& aEvent) -> std::optional<S1apOut>;
