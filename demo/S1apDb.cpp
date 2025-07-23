@@ -93,6 +93,8 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 	subscriber.lastActiveTimestamp = aEvent.timestamp;
 	subscriber.enodeb_id = aEvent.enodeb_id.value();
 	subscriber.cgi = aEvent.cgi.value();
+	subscriber.waitingForAttachAccept = true;
+	subscriber.waitingForIdentityResponse = true;
 
 	// TODO: update all indexes
 	m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
@@ -127,6 +129,9 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		subscriber.enodeb_id = aEvent.enodeb_id.value();
 		subscriber.m_tmsi = aEvent.m_tmsi.value();
 		subscriber.cgi = aEvent.cgi.value();
+
+		subscriber.waitingForAttachAccept = true;
+		subscriber.waitingForIdentityResponse = true;
 
 		// TODO: update all indexes
 		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
