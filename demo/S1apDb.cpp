@@ -84,25 +84,29 @@ auto S1apDb::handleAttachRequest(const Event& aEvent)->std::optional<S1apOut>
 
 auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>
 {
-	//                 new         new    new
+	//                 new        new|old  new
 	// AttachRequest{enodeb_id_1, imsi_1, cgi_1}
 
 	// ismi is unique but in case double messages do not produce new subscriber
 	const auto imsi = aEvent.imsi.value();
 	// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
+	// TODO: unordered_map.find makes one pass
 	const auto newSubscriber = not m_subscribers.contains(imsi);
 	auto& subscriber = m_subscribers[imsi];
 
 	subscriber.lastActiveTimestamp = aEvent.timestamp;
 	subscriber.enodeb_id = aEvent.enodeb_id.value();
 	subscriber.cgi = aEvent.cgi.value();
+
 	subscriber.waitingForAttachAccept = true;
 	subscriber.waitingForIdentityResponse = true;
 
-	// TODO: update all indexes
 	m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
+
+	// suscriber`s session timeout managment
 	m_timeStampQueue.push({aEvent.timestamp, imsi});
 
+	// TODO: i`m not sure here about s1ap_type
 	if(newSubscriber)
 	{
 		return {{
@@ -137,11 +141,13 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		subscriber.waitingForAttachAccept = true;
 		subscriber.waitingForIdentityResponse = true;
 
-		// TODO: update all indexes
 		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
 		m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
+
+		// suscriber`s session timeout managment
 		m_timeStampQueue.push({aEvent.timestamp, imsi});
 
+		// TODO: i`m not sure here about s1ap_type
 		if(newSubscriber)
 		{
 			return {{
@@ -162,7 +168,6 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 
 	if(auto subscriber = m_subscribers.find(aEvent.imsi.value()); m_subscribers.end() != subscriber)
 	{
-		// TODO: check status flags
 		if(!subscriber->second.waitingForIdentityResponse)
 		{
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
@@ -179,6 +184,7 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 		subscriber->second.cgi = aEvent.cgi.value();
 
+		// TODO: return struct on change cgi or always?
 		return {{
 				.s1ap_type = S1apOut::S1apOutType::Cgi,
 				.imsi = aEvent.imsi.value(),
@@ -287,6 +293,7 @@ auto S1apDb::handlePathSwitchRequest(const Event& aEvent) -> std::optional<S1apO
 
 auto S1apDb::handlePathSwitchRequestAcknowledge(const Event& aEvent) -> std::optional<S1apOut>
 {
+	//                                  new         old
 	// PathSwitchRequestAcknowledge {enodeb_id_4, mme_id_4}
 
 	if(const auto imsiIter = m_mme_id2imsi.find(aEvent.mme_id.value()); m_mme_id2imsi.end() != imsiIter)
