@@ -16,7 +16,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::AttachRequest:
 			return handleAttachRequest(aEvent);
 		case ET::IdentityResponse:
-			// TODO: return handleIdentityResponse();
+			return handleIdentityResponse(aEvent);
 		case ET::AttachAccept:
 			 return handleAttachAccept(aEvent);
 		case ET::Paging:
@@ -142,33 +142,35 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 	return std::nullopt;
 }
 
+auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOut>
+{
+	//                                         old     new
+	//IdentityResponse{enodeb_id_1, mme_id_1, imsi_1, cgi_2}
+
+	if(auto subscriber = m_subscribers.find(aEvent.imsi.value()); m_subscribers.end() != subscriber)
 	{
-		// find old imsi and update
-		// m_tmsi -> imsi -> new / update subscriber
-		if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
+		// TODO: check status flags
+		if(!subscriber->second.waitingForIdentityResponse)
 		{
-			const auto& imsi = imsiIter->second;
-			// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
-			const auto newSubscriber = not m_subscribers.contains(imsi);
-			auto& subscriber = m_subscribers[imsi];
-
-			subscriber.lastActiveTimestamp = aEvent.timestamp;
-			subscriber.enodeb_id = aEvent.enodeb_id.value();
-			subscriber.m_tmsi = aEvent.m_tmsi.value();
-			subscriber.cgi = aEvent.cgi.value();
-
-			// TODO: update all indexes
-			m_m_tmsi2imsi[imsi] = imsi;
-
-			if(newSubscriber)
-			{
-				return {{
-						.s1ap_type = S1apOut::S1apOutType::Reg,
-						.imsi = imsi,
-						.cgi = aEvent.cgi.value()
-					}};
-			}
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			return std::nullopt;
 		}
+		
+		// check request timeout condition
+		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+		{
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			return std::nullopt;
+		}
+
+		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+		subscriber->second.cgi = aEvent.cgi.value();
+
+		return {{
+				.s1ap_type = S1apOut::S1apOutType::Cgi,
+				.imsi = aEvent.imsi.value(),
+				.cgi = aEvent.cgi.value()
+			}};
 	}
 
 	return std::nullopt;

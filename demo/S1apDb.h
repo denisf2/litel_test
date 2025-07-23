@@ -100,6 +100,7 @@ private:
 	auto handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1apOut>;
 
+	auto handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>;
 
 	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
