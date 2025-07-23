@@ -22,7 +22,7 @@ auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
 		case ET::Paging:
 			return handlePaging(aEvent);
 		case ET::PathSwitchRequest:
-			// TODO: return handlePathSwitchRequest();
+			return handlePathSwitchRequest(aEvent);
 		case ET::PathSwitchRequestAcknowledge:
 			return handlePathSwitchRequestAcknowledge(aEvent);
 		case ET::UEContextReleaseCommand:
@@ -186,6 +186,34 @@ auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
 		{
 			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber->second.cgi = aEvent.cgi.value();
+
+			// TODO: return struct on change cgi or always?
+			return {{
+						.s1ap_type = S1apOut::S1apOutType::Cgi,
+						.imsi = imsi,
+						.cgi = aEvent.cgi.value(),
+					}};
+		}
+	}
+
+	return std::nullopt;
+}
+
+auto S1apDb::handlePathSwitchRequest(const Event& aEvent) -> std::optional<S1apOut>
+{
+	//                     new          old      new
+	// PathSwitchRequest{enodeb_id_4, mme_id_3, cgi_6}
+
+	if(const auto imsiIter = m_mme_id2imsi.find(aEvent.mme_id.value()); m_mme_id2imsi.end() != imsiIter)
+	{
+		const auto& imsi = imsiIter->second;
+		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		{
+			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber->second.waitingForRequestAcknowledge = true;
+
+			// TODO: ??? do i need update cgi here without timeout check?
 			subscriber->second.cgi = aEvent.cgi.value();
 
 			// TODO: return struct on change cgi or always?

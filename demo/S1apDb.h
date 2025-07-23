@@ -101,6 +101,8 @@ private:
 	auto handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1apOut>;
 
 	auto handlePaging(const Event& aEvent) -> std::optional<S1apOut>;
+
+	auto handlePathSwitchRequest(const Event& aEvent) -> std::optional<S1apOut>;
 	auto handlePathSwitchRequestAcknowledge(const Event& aEvent)->std::optional<S1apOut>;
 
 	auto handleUEContextReleaseCommand(const Event& aEvent) -> std::optional<S1apOut>;
