@@ -94,7 +94,7 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 	subscriber.cgi = aEvent.cgi.value();
 
 	// TODO: update all indexes
-	m_enodeb_id2imsi[imsi] = imsi;
+	m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 
 	if(newSubscriber)
 	{
@@ -127,7 +127,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		subscriber.cgi = aEvent.cgi.value();
 
 		// TODO: update all indexes
-		m_m_tmsi2imsi[imsi] = imsi;
+		m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
 
 		if(newSubscriber)
 		{
