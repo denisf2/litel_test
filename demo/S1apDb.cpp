@@ -314,7 +314,7 @@ auto S1apDb::handlePathSwitchRequestAcknowledge(const Event& aEvent) -> std::opt
 			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
 
 			m_enodeb_id2imsi.erase(subscriber->second.enodeb_id);
-			m_enodeb_id2imsi[aEvent.enodeb_id.value()] = subscriber->second.mme_id;
+			m_enodeb_id2imsi[aEvent.enodeb_id.value()] = subscriber->first;
 
 			subscriber->second.enodeb_id = aEvent.enodeb_id.value();
 		}
