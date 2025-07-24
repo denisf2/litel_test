@@ -155,8 +155,10 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		m_timeStampQueue.push({aEvent.timestamp, imsi});
 
 		// TODO: i`m not sure here about old/new subscriber and s1ap_type
+		// suppose always restore old subscriber
 		if(newSubscriber)
 		{
+			// TODO: this never sends
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Reg,
 					.imsi = imsi,
