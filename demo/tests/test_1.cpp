@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 #include "..\S1apDb.h"
 
+constexpr uint64_t session_timeout_24_hours_in_ms{24ull * 60 * 60 * 1000};
+
 TEST(Registration_Test, eNodeB_AttachRequest_imsi)
 {
 	demo::Event event {
@@ -627,5 +629,111 @@ TEST(PathChanging_Test, eNodeB_PathSwitchRequestAcknowledge_more_1_sec)
 	EXPECT_EQ(res, std::nullopt);
 }
 
-// TODO: TEST(Timeouts_Test, eNodeB_AttachRequest_Identity_Respond)
+TEST(Timeouts_Test, eNodeB_subscriber_is_not_active_exectly_24_hours_is_valid)
+{
+	demo::S1apDb foo;
+
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 1000ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 20,
+			.imsi = 200ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = session_timeout_24_hours_in_ms,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = session_timeout_24_hours_in_ms + 1,
+			.event_type = demo::Event::EventType::UEContextReleaseResponse,
+			.enodeb_id = 10,
+			.mme_id = 10,
+	};
+	const auto res = foo.handler(event);
+
+	const demo::S1apOut out{
+			.s1ap_type = demo::S1apOut::UnReg,
+			.imsi = 100ull,
+			.cgi = {{4, 5, 6, 7}}
+	};
+
+	EXPECT_EQ(res.value(), out);
+}
+
+ TEST(Timeouts_Test, eNodeB_subscriber_is_not_active_more_24_hours)
+ {
+	 demo::S1apDb foo;
+
+	 demo::Event event{
+			 .timestamp = 0ull,
+			 .event_type = demo::Event::EventType::AttachRequest,
+			 .enodeb_id = 10,
+			 .imsi = 100ull,
+			 .cgi = {{0, 1, 2, 3}}
+	 };
+	 foo.handler(event);
+
+	 event = demo::Event{
+			 .timestamp = 900ull,
+			 .event_type = demo::Event::EventType::AttachAccept,
+			 .enodeb_id = 10,
+			 .mme_id = 10,
+			 .m_tmsi = 100,
+	 };
+	 foo.handler(event);
+
+	 event = demo::Event {
+			 .timestamp = session_timeout_24_hours_in_ms + 1,
+			 .event_type = demo::Event::EventType::AttachRequest,
+			 .enodeb_id = 20,
+			 .imsi = 200ull,
+			 .cgi = {{0, 1, 2, 3}}
+	 };
+	 foo.handler(event);
+
+	 event = demo::Event{
+			 .timestamp = session_timeout_24_hours_in_ms + 2000,
+			 .event_type = demo::Event::EventType::UEContextReleaseCommand,
+			 .enodeb_id = 10,
+			 .mme_id = 10,
+			 .cgi = {{4, 5, 6, 7}}
+	 };
+	 foo.handler(event);
+
+	 event = demo::Event{
+			 .timestamp = session_timeout_24_hours_in_ms + 2500,
+			 .event_type = demo::Event::EventType::UEContextReleaseResponse,
+			 .enodeb_id = 10,
+			 .mme_id = 10,
+	 };
+	 const auto res = foo.handler(event);
+
+	 EXPECT_EQ(res, std::nullopt);
+ }
 // TODO: TEST(CallFlow_Test, eNodeB_AttachRequest_Identity_Respond)
