@@ -196,7 +196,7 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 		// TODO: return struct on change cgi or always?
 		return {{
 				.s1ap_type = S1apOut::S1apOutType::Cgi,
-				.imsi = aEvent.imsi.value(),
+				.imsi = subscriber->first,
 				.cgi = aEvent.cgi.value()
 			}};
 	}
@@ -232,12 +232,12 @@ auto S1apDb::handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>
 			subscriber->second.m_tmsi = aEvent.m_tmsi.value();
 
 			// update indexes
-			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
-			m_mme_id2imsi[aEvent.mme_id.value()] = imsi;
+			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = subscriber->first;
+			m_mme_id2imsi[aEvent.mme_id.value()] = subscriber->first;
 
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Reg,
-					.imsi = imsi,
+					.imsi = subscriber->first,
 					.cgi = subscriber->second.cgi
 				}};
 		}
@@ -262,7 +262,7 @@ auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 			// TODO: return struct on change cgi or always?
 			return {{
 						.s1ap_type = S1apOut::S1apOutType::Cgi,
-						.imsi = imsi,
+						.imsi = subscriber->first,
 						.cgi = aEvent.cgi.value(),
 					}};
 		}
@@ -290,7 +290,7 @@ auto S1apDb::handlePathSwitchRequest(const Event& aEvent) -> std::optional<S1apO
 			// TODO: return struct on change cgi or always?
 			return {{
 						.s1ap_type = S1apOut::S1apOutType::Cgi,
-						.imsi = imsi,
+						.imsi = subscriber->first,
 						.cgi = aEvent.cgi.value(),
 					}};
 		}
@@ -350,7 +350,7 @@ auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional
 			// TODO: return struct on change cgi or always?
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Cgi,
-					.imsi = imsi,
+					.imsi = subscriber->first,
 					.cgi = aEvent.cgi.value()
 				}};
 		}
@@ -387,7 +387,7 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::UnReg,
-					.imsi = imsi,
+					.imsi = subscriber->first,
 					.cgi = subscriber->second.cgi
 				}};
 		}
