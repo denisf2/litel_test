@@ -218,8 +218,214 @@ TEST(Registration_Test, eNodeB_AttachRequest_Identity_Respond_more_1_sec)
 	EXPECT_EQ(res, std::nullopt);
 }
 
+TEST(Deregistration_Test, eNodeB_UEContextReleaseCommand)
+{
+	demo::S1apDb foo;
 
-//TEST(Deregistration_Test, eNodeB_AttachRequest_Identity_Respond)
-//TEST(PathChanging_Test, eNodeB_AttachRequest_Identity_Respond)
-//TEST(Timeouts_Test, eNodeB_AttachRequest_Identity_Respond)
-//TEST(CallFlow_Test, eNodeB_AttachRequest_Identity_Respond)
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2000ull,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+
+	const auto res = foo.handler(event);
+
+	const demo::S1apOut out{
+				.s1ap_type = demo::S1apOut::Cgi,
+				.imsi = 100ull,
+				.cgi = {{4, 5, 6, 7}}
+	};
+
+	EXPECT_EQ(res.value(), out);
+}
+
+TEST(Deregistration_Test, eNodeB_UEContextReleaseCommand_not_valid_enode_id)
+{
+	demo::S1apDb foo;
+
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2000ull,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 20,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+
+	const auto res = foo.handler(event);
+
+	EXPECT_EQ(res, std::nullopt);
+}
+
+TEST(Deregistration_Test, eNodeB_UEContextReleaseResponse_less_1_sec)
+{
+	demo::S1apDb foo;
+
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2000ull,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2500ull,
+			.event_type = demo::Event::EventType::UEContextReleaseResponse,
+			.enodeb_id = 10,
+			.mme_id = 10,
+	};
+	const auto res = foo.handler(event);
+
+	const demo::S1apOut out{
+				.s1ap_type = demo::S1apOut::UnReg,
+				.imsi = 100ull,
+				.cgi = {{4, 5, 6, 7}}
+	};
+
+	EXPECT_EQ(res.value(), out);
+}
+
+TEST(Deregistration_Test, eNodeB_UEContextReleaseResponse_less_1_sec_not_valid_enodeb_id)
+{
+	demo::S1apDb foo;
+
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2000ull,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2500ull,
+			.event_type = demo::Event::EventType::UEContextReleaseResponse,
+			.enodeb_id = 20,
+			.mme_id = 10,
+	};
+	const auto res = foo.handler(event);
+
+	EXPECT_EQ(res, std::nullopt);
+}
+
+TEST(Deregistration_Test, eNodeB_UEContextReleaseResponse_more_1_sec)
+{
+	demo::S1apDb foo;
+
+	demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 10,
+			.imsi = 100ull,
+			.cgi = {{0, 1, 2, 3}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 900ull,
+			.event_type = demo::Event::EventType::AttachAccept,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.m_tmsi = 100,
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 2000ull,
+			.event_type = demo::Event::EventType::UEContextReleaseCommand,
+			.enodeb_id = 10,
+			.mme_id = 10,
+			.cgi = {{4, 5, 6, 7}}
+	};
+	foo.handler(event);
+
+	event = demo::Event{
+			.timestamp = 3500ull,
+			.event_type = demo::Event::EventType::UEContextReleaseResponse,
+			.enodeb_id = 10,
+			.mme_id = 10,
+	};
+	const auto res = foo.handler(event);
+
+	EXPECT_EQ(res, std::nullopt);
+}
+
+// TODO: TEST(PathChanging_Test, eNodeB_AttachRequest_Identity_Respond)
+// TODO: TEST(Timeouts_Test, eNodeB_AttachRequest_Identity_Respond)
+// TODO: TEST(CallFlow_Test, eNodeB_AttachRequest_Identity_Respond)
