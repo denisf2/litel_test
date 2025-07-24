@@ -388,7 +388,7 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::UnReg,
 					.imsi = imsi,
-					.cgi = aEvent.cgi.value()
+					.cgi = subscriber->second.cgi
 				}};
 		}
 	}
