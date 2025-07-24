@@ -61,7 +61,7 @@ auto S1apDb::cleanupOldRecords(uint64_t aCurrentTime) -> void
 	// check how old subscriber`s session is
 	if(aCurrentTime - it->second.lastActiveTimestamp <= session_timeout_24_hours_ms)
 	{
-		// is Ok then update time and push it in the queue again
+		// is still worthy then update time and push it back
 		m_timeStampQueue.push({it->second.lastActiveTimestamp, it->first});
 		return;
 	}
@@ -154,7 +154,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		// suscriber`s session timeout managment
 		m_timeStampQueue.push({aEvent.timestamp, imsi});
 
-		// TODO: i`m not sure here about s1ap_type
+		// TODO: i`m not sure here about old/new subscriber and s1ap_type
 		if(newSubscriber)
 		{
 			return {{
