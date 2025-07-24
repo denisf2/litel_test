@@ -24,7 +24,7 @@ struct Event
 
 	// sizeof(unsigned long) == [4|8] depends on platform
 	uint64_t timestamp{0ul}; // since EPOCH in ms
-	EventType event_type;
+	EventType event_type{EventType::AttachRequest};
 
 	std::optional<uint32_t> enodeb_id;
 	std::optional<uint32_t> mme_id;
@@ -43,10 +43,12 @@ struct S1apOut
 		, Cgi
 	};
 
-	S1apOutType s1ap_type;
-	uint64_t imsi{0ul};
+	S1apOutType s1ap_type{S1apOutType::Cgi};
+	uint64_t imsi{0ull};
 
 	std::vector<uint8_t> cgi;
+
+	friend auto operator== (const S1apOut& aLeft, const S1apOut& aRight) -> bool;
 };
 
 class S1apDb

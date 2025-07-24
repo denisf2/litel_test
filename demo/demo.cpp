@@ -7,9 +7,22 @@ using namespace std;
 
 int main()
 {
-	demo::S1apDb foo;
-	demo::Event event;
-	const auto res = foo.handler(event);
+	try
+	{
+		demo::S1apDb foo;
+		demo::Event event{
+			.timestamp = 0ull,
+			.event_type = demo::Event::EventType::AttachRequest,
+			.enodeb_id = 0,
+			.imsi = 0ull,
+			.cgi = {{}}
+		};
+		const auto res = foo.handler(event);
+	}
+	catch(std::exception aExc)
+	{
+		std::cout << aExc.what() << endl;
+	}
 
 	cout << "Hello CMake." << endl;
 	return 0;

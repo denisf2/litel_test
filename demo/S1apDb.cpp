@@ -3,6 +3,14 @@
 namespace demo
 {
 
+auto operator== (const S1apOut& aLeft, const S1apOut& aRight) -> bool
+{
+	return aLeft.s1ap_type == aRight.s1ap_type
+			&& aLeft.imsi == aRight.imsi
+			&& aLeft.cgi == aRight.cgi
+		;
+}
+
 constexpr uint64_t request_timeout_1_sec_ms{1000ull};
 
 auto S1apDb::handler(const Event& aEvent) -> std::optional<S1apOut>
