@@ -49,29 +49,34 @@ auto S1apDb::cleanupOldRecords(uint64_t aCurrentTime) -> void
 	if(m_timeStampQueue.empty())
 		return;
 
-	// taking the oldest imsi
-	const auto imsi = m_timeStampQueue.top().second;
-	m_timeStampQueue.pop();
+	// taking the oldest Imsi
+	const auto& [_, topImsi] = m_timeStampQueue.top();
 
 	// check if it is still here
-	const auto it = m_subscribers.find(imsi);
+	const auto it = m_subscribers.find(topImsi);
+
+	//invalidates ref
+	m_timeStampQueue.pop();
+
 	if(m_subscribers.end() == it)
 		return;
 
-	// check how old subscriber`s session is
-	if(aCurrentTime - it->second.lastActiveTimestamp <= session_timeout_24_hours_ms)
+	const auto& [imsi, subscriber] = *it;
+
+	// check how old it`s session is
+	if(aCurrentTime - subscriber.lastActiveTimestamp <= session_timeout_24_hours_ms)
 	{
 		// is still worthy then update time and push it back
-		m_timeStampQueue.push({it->second.lastActiveTimestamp, it->first});
+		m_timeStampQueue.emplace(subscriber.lastActiveTimestamp, imsi);
 		return;
 	}
 
-	// time to pass a way
-	m_m_tmsi2imsi.erase(it->second.m_tmsi);
-	m_enodeb_id2imsi.erase(it->second.enodeb_id);
-	m_mme_id2imsi.erase(it->second.mme_id);
+	// time to pass away
+	m_m_tmsi2imsi.erase(subscriber.m_tmsi);
+	m_enodeb_id2imsi.erase(subscriber.enodeb_id);
+	m_mme_id2imsi.erase(subscriber.mme_id);
 
-	m_subscribers.erase(it->first);
+	m_subscribers.erase(imsi);
 }
 
 auto S1apDb::handleAttachRequest(const Event& aEvent)->std::optional<S1apOut>
@@ -82,12 +87,9 @@ auto S1apDb::handleAttachRequest(const Event& aEvent)->std::optional<S1apOut>
 	// more 24 hours
 	// AttachRequest {enodeb_id_5, imsi_1, cgi_8}
 
-	if(aEvent.imsi.has_value()) // has imsi
-		return handleAttachRequest_imsi(aEvent);
-	else if(aEvent.m_tmsi.has_value()) // no imsi and has m_tmsi
-		return handleAttachRequest_m_tmsi(aEvent);
-
-	return std::nullopt;
+	return aEvent.imsi ? handleAttachRequest_imsi(aEvent)
+				: aEvent.m_tmsi ? handleAttachRequest_m_tmsi(aEvent)
+					: std::nullopt;
 }
 
 auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1apOut>
@@ -95,7 +97,7 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 	//                 new        new|old  new
 	// AttachRequest{enodeb_id_1, imsi_1, cgi_1}
 
-	// ismi is unique but in case double messages do not produce new subscriber
+	// ismi is unique but in case double messages do not produce new it
 	const auto imsi = aEvent.imsi.value();
 	// TODO: double run unordered_map lookup. insert, emplace, insert_or_assign overwrites full structure
 	// TODO: unordered_map.find makes one pass
@@ -112,7 +114,7 @@ auto S1apDb::handleAttachRequest_imsi(const Event& aEvent) -> std::optional<S1ap
 	m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 
 	// suscriber`s session timeout managment
-	m_timeStampQueue.push({aEvent.timestamp, imsi});
+	m_timeStampQueue.emplace(aEvent.timestamp, imsi);
 
 	// TODO: i`m not sure here about s1ap_type
 	if(newSubscriber)
@@ -132,7 +134,7 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 	//                  new        new|old    new
 	// AttachRequest {enodeb_id_3, m_tmsi_1, cgi_5}
 	// find old imsi and update
-	// m_tmsi -> imsi -> new / update subscriber
+	// m_tmsi -> imsi -> new / update it
 	if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
@@ -152,10 +154,10 @@ auto S1apDb::handleAttachRequest_m_tmsi(const Event& aEvent) -> std::optional<S1
 		m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 
 		// suscriber`s session timeout managment
-		m_timeStampQueue.push({aEvent.timestamp, imsi});
+		m_timeStampQueue.emplace(aEvent.timestamp, imsi);
 
-		// TODO: i`m not sure here about old/new subscriber and s1ap_type
-		// suppose always restore old subscriber
+		// TODO: i`m not sure here about old/new it and s1ap_type
+		// suppose always restore old it
 		if(newSubscriber)
 		{
 			// TODO: this never sends
@@ -175,30 +177,31 @@ auto S1apDb::handleIdentityResponse(const Event& aEvent) -> std::optional<S1apOu
 	//                                         old     new
 	//IdentityResponse{enodeb_id_1, mme_id_1, imsi_1, cgi_2}
 
-	if(auto subscriber = m_subscribers.find(aEvent.imsi.value()); m_subscribers.end() != subscriber)
+	if(auto it = m_subscribers.find(aEvent.imsi.value()); m_subscribers.end() != it)
 	{
-		if(!subscriber->second.waitingForIdentityResponse)
+		auto& [imsi, subscriber] = *it;
+		if(!subscriber.waitingForIdentityResponse)
 		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
 			return std::nullopt;
 		}
 
-		subscriber->second.waitingForIdentityResponse = false;
+		subscriber.waitingForIdentityResponse = false;
 
 		// check request timeout condition
-		if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+		if(aEvent.timestamp - subscriber.lastActiveTimestamp > request_timeout_1_sec_ms)
 		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
 			return std::nullopt;
 		}
 
-		subscriber->second.lastActiveTimestamp = aEvent.timestamp;
-		subscriber->second.cgi = aEvent.cgi.value();
+		subscriber.lastActiveTimestamp = aEvent.timestamp;
+		subscriber.cgi = aEvent.cgi.value();
 
 		// TODO: return struct on change cgi or always?
 		return {{
 				.s1ap_type = S1apOut::S1apOutType::Cgi,
-				.imsi = subscriber->first,
+				.imsi = imsi,
 				.cgi = aEvent.cgi.value()
 			}};
 	}
@@ -214,33 +217,34 @@ auto S1apDb::handleAttachAccept(const Event& aEvent) -> std::optional<S1apOut>
 	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
+			auto& [_imsi_, subscriber] = *it;
 			// check request flag
-			if(!subscriber->second.waitingForAttachAccept)
+			if(!subscriber.waitingForAttachAccept)
 				return std::nullopt;
 
-			subscriber->second.waitingForAttachAccept = false;
+			subscriber.waitingForAttachAccept = false;
 
 			// check timeout
-			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+			if(aEvent.timestamp - subscriber.lastActiveTimestamp > request_timeout_1_sec_ms)
 				return std::nullopt;
 
-			// TODO: ??? shoud mme update subscriber last active time?
-			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			// TODO: ??? shoud mme update it last active time?
+			//it.lastActiveTimestamp = aEvent.timestamp;
 
-			// update subscriber
-			subscriber->second.mme_id = aEvent.mme_id.value();
-			subscriber->second.m_tmsi = aEvent.m_tmsi.value();
+			// update it
+			subscriber.mme_id = aEvent.mme_id.value();
+			subscriber.m_tmsi = aEvent.m_tmsi.value();
 
 			// update indexes
-			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = subscriber->first;
-			m_mme_id2imsi[aEvent.mme_id.value()] = subscriber->first;
+			m_m_tmsi2imsi[aEvent.m_tmsi.value()] = imsi;
+			m_mme_id2imsi[aEvent.mme_id.value()] = imsi;
 
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Reg,
-					.imsi = subscriber->first,
-					.cgi = subscriber->second.cgi
+					.imsi = _imsi_,
+					.cgi = subscriber.cgi
 				}};
 		}
 	}
@@ -256,15 +260,16 @@ auto S1apDb::handlePaging(const Event& aEvent) -> std::optional<S1apOut>
 	if(const auto imsiIter = m_m_tmsi2imsi.find(aEvent.m_tmsi.value()); m_m_tmsi2imsi.cend() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
-			subscriber->second.cgi = aEvent.cgi.value();
+			auto& [_imsi_, subscriber] = *it;
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
+			subscriber.cgi = aEvent.cgi.value();
 
 			// TODO: return struct on change cgi or always?
 			return {{
 						.s1ap_type = S1apOut::S1apOutType::Cgi,
-						.imsi = subscriber->first,
+						.imsi = _imsi_,
 						.cgi = aEvent.cgi.value(),
 					}};
 		}
@@ -281,18 +286,19 @@ auto S1apDb::handlePathSwitchRequest(const Event& aEvent) -> std::optional<S1apO
 	if(const auto imsiIter = m_mme_id2imsi.find(aEvent.mme_id.value()); m_mme_id2imsi.end() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
-			subscriber->second.waitingForRequestAcknowledge = true;
+			auto& [_imsi_, subscriber] = *it;
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
+			subscriber.waitingForRequestAcknowledge = true;
 
 			// TODO: ??? do i need update cgi here without timeout check?
-			subscriber->second.cgi = aEvent.cgi.value();
+			subscriber.cgi = aEvent.cgi.value();
 
 			// TODO: return struct on change cgi or always?
 			return {{
 						.s1ap_type = S1apOut::S1apOutType::Cgi,
-						.imsi = subscriber->first,
+						.imsi = _imsi_,
 						.cgi = aEvent.cgi.value(),
 					}};
 		}
@@ -309,25 +315,26 @@ auto S1apDb::handlePathSwitchRequestAcknowledge(const Event& aEvent) -> std::opt
 	if(const auto imsiIter = m_mme_id2imsi.find(aEvent.mme_id.value()); m_mme_id2imsi.end() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
+			auto& [_imsi_, subscriber] = *it;
 			// check request flag
-			if(!subscriber->second.waitingForRequestAcknowledge)
+			if(!subscriber.waitingForRequestAcknowledge)
 				return std::nullopt;
 
-			subscriber->second.waitingForRequestAcknowledge = false;
+			subscriber.waitingForRequestAcknowledge = false;
 
 			// timeout check
-			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+			if(aEvent.timestamp - subscriber.lastActiveTimestamp > request_timeout_1_sec_ms)
 				return std::nullopt;
 
-			// TODO: ??? shoud mme update subscriber last active time?
-			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			// TODO: ??? shoud mme update it last active time?
+			//subscriber.lastActiveTimestamp = aEvent.timestamp;
 
-			m_enodeb_id2imsi.erase(subscriber->second.enodeb_id);
-			m_enodeb_id2imsi[aEvent.enodeb_id.value()] = subscriber->first;
+			m_enodeb_id2imsi.erase(subscriber.enodeb_id);
+			m_enodeb_id2imsi[aEvent.enodeb_id.value()] = imsi;
 
-			subscriber->second.enodeb_id = aEvent.enodeb_id.value();
+			subscriber.enodeb_id = aEvent.enodeb_id.value();
 		}
 	}
 
@@ -342,17 +349,18 @@ auto S1apDb::handleUEContextReleaseCommand(const Event& aEvent) -> std::optional
 	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
-			subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			auto& [_imsi_, subscriber] = *it;
+			subscriber.lastActiveTimestamp = aEvent.timestamp;
 			// TODO: ??? do i need update cgi here without timeout check?
-			subscriber->second.cgi = aEvent.cgi.value();
-			subscriber->second.waitingForReleaseResponse = true;
+			subscriber.cgi = aEvent.cgi.value();
+			subscriber.waitingForReleaseResponse = true;
 
 			// TODO: return struct on change cgi or always?
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::Cgi,
-					.imsi = subscriber->first,
+					.imsi = _imsi_,
 					.cgi = aEvent.cgi.value()
 				}};
 		}
@@ -368,20 +376,21 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 	if(const auto imsiIter = m_enodeb_id2imsi.find(aEvent.enodeb_id.value()); m_enodeb_id2imsi.end() != imsiIter)
 	{
 		const auto& imsi = imsiIter->second;
-		if(auto subscriber = m_subscribers.find(imsi); m_subscribers.end() != subscriber)
+		if(auto it = m_subscribers.find(imsi); m_subscribers.end() != it)
 		{
+			auto& [_imsi_, subscriber] = *it;
 			// check request flag
-			if(!subscriber->second.waitingForReleaseResponse)
+			if(!subscriber.waitingForReleaseResponse)
 				return std::nullopt;
 
-			subscriber->second.waitingForReleaseResponse = false;
+			subscriber.waitingForReleaseResponse = false;
 
 			// check timeout
-			if(aEvent.timestamp - subscriber->second.lastActiveTimestamp > request_timeout_1_sec_ms)
+			if(aEvent.timestamp - subscriber.lastActiveTimestamp > request_timeout_1_sec_ms)
 				return std::nullopt;
 
-			// TODO: ??? shoud mme update subscriber last active time?
-			//subscriber->second.lastActiveTimestamp = aEvent.timestamp;
+			// TODO: ??? shoud mme update it last active time?
+			//subscriber.lastActiveTimestamp = aEvent.timestamp;
 
 			// detache ids form imsi
 			m_enodeb_id2imsi.erase(aEvent.enodeb_id.value());
@@ -389,8 +398,8 @@ auto S1apDb::handleUEContextReleaseResponse(const Event& aEvent) -> std::optiona
 
 			return {{
 					.s1ap_type = S1apOut::S1apOutType::UnReg,
-					.imsi = subscriber->first,
-					.cgi = subscriber->second.cgi
+					.imsi = _imsi_,
+					.cgi = subscriber.cgi
 				}};
 		}
 	}
